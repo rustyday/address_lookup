@@ -24,8 +24,11 @@
 from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, QgsPointXY, QgsCoordinateTransform, QgsCoordinateReferenceSystem
+from qgis.core import QgsProject, QgsPointXY, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsLayoutItemMap, \
+    QgsPrintLayout, QgsLayoutSize, QgsUnitTypes, QgsReadWriteContext
 from qgis.gui import QgsMessageBar
+from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtCore import QFile, QIODevice
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -33,8 +36,9 @@ from .resources import *
 from .field_maps_dialog import MakeFieldMapsDialog
 import os.path
 import sys
+import os
 
-sys.path.append('./address_parser')
+sys.path.append('C:/Users/David/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/field_maps')
 import address_parser
 
 results = {}
@@ -217,6 +221,7 @@ class MakeFieldMaps:
                     self.dlg.comboBox.currentIndexChanged.connect(self.selectionchange)
                     self.selectionchange()
                     self.dlg.pushButton_2.clicked.connect(self.go)
+                    self.dlg.pushButton_3.clicked.connect(self.make_layout)
                 else:
                     self.dlg.comboBox.addItems(['No results found'])
 
@@ -230,6 +235,42 @@ class MakeFieldMaps:
             pt = transform.transform(new_point.x(), new_point.y())
             self.iface.mapCanvas().setCenter(pt)
             self.iface.mapCanvas().refreshAllLayers()
+
+    def make_layout(self):
+        projectInstance = QgsProject.instance()
+        manager = projectInstance.layoutManager()
+        # make a new print layout object
+        layout = QgsPrintLayout(projectInstance)
+        # needs to call this according to API documentaiton
+        layout.initializeDefaults()
+        # load from template
+
+        filename = 'C:/Users/David/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/field_maps/a4_portrait_500.qpt'
+        file = QFile(filename)
+        if file.open(QIODevice.ReadOnly):
+            document = QDomDocument()
+            readok = document.setContent(file)  # content is .qpt file content
+            print(readok)
+            loaded = layout.loadFromTemplate(document, QgsReadWriteContext())
+            print(loaded)
+        else:
+            print('failed')
+        layout.setName('console')
+        # remove old layouts
+        for item in manager.layouts():
+            manager.removeLayout(item)
+        # add new layout to manager
+        manager.addLayout(layout)
+        # create a map item to add
+        # itemMap = QgsLayoutItemMap.create(layout)
+        # add some settings
+
+        # using ndawson's answer below, do this before setting extent
+        # itemMap.attemptResize(QgsLayoutSize(6, 4, QgsUnitTypes.LayoutInches))
+        # set an extent
+        # itemMap.setExtent(self.iface.mapCanvas().extent())
+        # add the map to the layout
+        # layout.addLayoutItem(itemMap)
 
     def run(self):
         """Run method that performs all the real work"""
