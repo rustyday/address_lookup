@@ -25,7 +25,7 @@ from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QFileDialog
 from qgis.core import QgsProject, QgsPointXY, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsLayoutItemMap, \
-    QgsPrintLayout, QgsLayoutSize, QgsUnitTypes, QgsReadWriteContext
+    QgsPrintLayout, QgsLayoutSize, QgsUnitTypes, QgsReadWriteContext, QgsRectangle
 from qgis.gui import QgsMessageBar
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.PyQt.QtCore import QFile, QIODevice
@@ -38,11 +38,20 @@ import os.path
 import sys
 import os
 
-sys.path.append('C:/Users/David/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/field_maps')
+
+def resolve_file(name, basepath=None):
+    if not basepath:
+      basepath = os.path.dirname(os.path.realpath(__file__))
+    return os.path.join(basepath)
+
+
+filep = resolve_file('address_parser.py')
+
+sys.path.append(filep)
 import address_parser
 
 results = {}
-
+pt = QgsPointXY(0.0, 0.0)
 
 class MakeFieldMaps:
     """QGIS Plugin Implementation."""
@@ -227,6 +236,7 @@ class MakeFieldMaps:
 
     def go(self):
         global results
+        global pt
         if results:
             coords_tuple = results[self.dlg.comboBox.currentText()]
             new_point = QgsPointXY(coords_tuple[0], coords_tuple[1])
@@ -242,17 +252,26 @@ class MakeFieldMaps:
         # make a new print layout object
         layout = QgsPrintLayout(projectInstance)
         # needs to call this according to API documentaiton
-        layout.initializeDefaults()
+        # layout.initializeDefaults()  - no, because loading from template
         # load from template
 
-        filename = 'C:/Users/David/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/field_maps/a4_portrait_500.qpt'
+        global filep
+        global pt
+        filename = filep + '/a4_portrait_500.qpt'
         file = QFile(filename)
         if file.open(QIODevice.ReadOnly):
             document = QDomDocument()
             readok = document.setContent(file)  # content is .qpt file content
-            print(readok)
             loaded = layout.loadFromTemplate(document, QgsReadWriteContext())
-            print(loaded)
+            refmap = layout.referenceMap()
+            # note scaling here works for 1:500 and this particular template only
+            xmin = pt.x() - 45.0375
+            ymin = pt.y() - 56.7855
+            xmax = pt.x() + 45.0375
+            ymax = pt.y() + 56.7855
+            # set extent
+            bb = QgsRectangle(xmin, ymin, xmax, ymax)
+            refmap.setExtent(bb)
         else:
             print('failed')
         layout.setName('console')
