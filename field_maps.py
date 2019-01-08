@@ -25,10 +25,12 @@ from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QFileDialog
 from qgis.core import QgsProject, QgsPointXY, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsLayoutItemMap, \
-    QgsPrintLayout, QgsLayoutSize, QgsUnitTypes, QgsReadWriteContext, QgsRectangle
+    QgsPrintLayout, QgsLayoutSize, QgsUnitTypes, QgsReadWriteContext, QgsRectangle, QgsVectorLayer, \
+    QgsFeature, QgsGeometry
 from qgis.gui import QgsMessageBar
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt.QtCore import QFile, QIODevice
+from qgis.PyQt.QtCore import QFile, QIODevice, QPointF
+from qgis.PyQt.QtGui import QPolygonF
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -49,6 +51,7 @@ filep = resolve_file('address_parser.py')
 
 sys.path.append(filep)
 import address_parser
+import cadastre_lookup
 
 results = {}
 pt = QgsPointXY(0.0, 0.0)
@@ -239,6 +242,34 @@ class MakeFieldMaps:
         global pt
         if results:
             coords_tuple = results[self.dlg.comboBox.currentText()]
+            # set up transform
+            # transform point for panning
+            new_point = QgsPointXY(coords_tuple[0], coords_tuple[1])
+            transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem("EPSG:4326"),
+                                               QgsCoordinateReferenceSystem("EPSG:28355"), QgsProject.instance())
+
+            # search for cadastral parcel
+            list_of_coords = cadastre_lookup.main(coords_tuple)
+            # see if we can make vector layer from coordinates
+            vlyr = QgsVectorLayer("Polygon", "temporary_polygons", "memory")
+            dprov = vlyr.dataProvider()
+            poly = QgsFeature()
+            point = QPointF()
+            list_polygon = QPolygonF()
+            for entry in list_of_coords:
+                point.setX(entry[0])
+                point.setY(entry[1])
+                list_polygon.append(point)
+            geomP = QgsGeometry.fromQPolygonF(list_polygon)
+            geomP.transform(transform)
+            poly.setGeometry(geomP)
+            # transform to GDA94
+            # poly.transform(transform)
+            dprov.addFeatures([poly])
+            vlyr.updateExtents()
+            QgsProject.instance().addMapLayers([vlyr])
+
+            # transform point for panning
             new_point = QgsPointXY(coords_tuple[0], coords_tuple[1])
             transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem("EPSG:4326"),
                                                QgsCoordinateReferenceSystem("EPSG:28355"), QgsProject.instance())
