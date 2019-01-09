@@ -230,10 +230,7 @@ class MakeFieldMaps:
                 self.dlg.comboBox.clear()  # remove old items if present
                 if results:
                     self.dlg.comboBox.addItems(list(results.keys()))
-                    self.dlg.comboBox.currentIndexChanged.connect(self.selectionchange)
                     self.selectionchange()
-                    self.dlg.pushButton_2.clicked.connect(self.go)
-                    self.dlg.pushButton_3.clicked.connect(self.make_layout)
                 else:
                     self.dlg.comboBox.addItems(['No results found'])
 
@@ -338,6 +335,9 @@ class MakeFieldMaps:
             self.dlg = MakeFieldMapsDialog()
 
         self.dlg.pushButton.clicked.connect(self.search)
+        self.dlg.comboBox.currentIndexChanged.connect(self.selectionchange)
+        self.dlg.pushButton_2.clicked.connect(self.go)
+        self.dlg.pushButton_3.clicked.connect(self.make_layout)
 
         # show the dialog
         self.dlg.show()
