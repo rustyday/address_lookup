@@ -37,10 +37,14 @@ def make_geocode_search(url):
         feature_list = JSON_object.get('features')
         # address_item_dict = {}
         for item in feature_list:
+            attributes = item.get('attributes')
+            volume = attributes.get('VOLUME')
+            folio = attributes.get('FOLIO')
+            parcel = str(folio) + '/' + str(volume)
             geometry = item.get('geometry')
             rings = geometry.get('rings')
             flatten_rings = [num for elem in rings for num in elem]
-            return flatten_rings
+            return flatten_rings, parcel
 
 
 def main(search_input):

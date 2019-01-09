@@ -26,10 +26,10 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QFileDialog
 from qgis.core import QgsProject, QgsPointXY, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsLayoutItemMap, \
     QgsPrintLayout, QgsLayoutSize, QgsUnitTypes, QgsReadWriteContext, QgsRectangle, QgsVectorLayer, \
-    QgsFeature, QgsGeometry
+    QgsFeature, QgsGeometry, QgsField
 from qgis.gui import QgsMessageBar
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt.QtCore import QFile, QIODevice, QPointF
+from qgis.PyQt.QtCore import QFile, QIODevice, QPointF, QVariant
 from qgis.PyQt.QtGui import QPolygonF
 
 # Initialize Qt resources from file resources.py
@@ -246,9 +246,12 @@ class MakeFieldMaps:
                                                QgsCoordinateReferenceSystem("EPSG:28355"), QgsProject.instance())
 
             # search for cadastral parcel
-            list_of_coords = cadastre_lookup.main(coords_tuple)
+            cadastral_lookup = cadastre_lookup.main(coords_tuple)
+            list_of_coords = cadastral_lookup[0]
+            # print(results, cadastral_lookup[1])
             # see if we can make vector layer from coordinates
             vlyr = QgsVectorLayer("Polygon", "temporary_polygons", "memory")
+            vlyr.startEditing()
             dprov = vlyr.dataProvider()
             poly = QgsFeature()
             point = QPointF()
@@ -261,7 +264,16 @@ class MakeFieldMaps:
             # transform to GDA94 - note different to transforming a point
             geomP.transform(transform)
             poly.setGeometry(geomP)
+            # set attributes
+            newField = QgsField("parcelID", QVariant.String)
+            indexN = dprov.addAttributes([newField])
             dprov.addFeatures([poly])
+            poly.setFields(dprov.fields())
+            vlyr.updateFields()
+            vlyr.commitChanges()
+            # print(poly.attributes())
+            # poly.setAttribute('parcelID', '' + cadastral_lookup[1])
+            print('parcelID', '' + cadastral_lookup[1])
             vlyr.updateExtents()
             # style as outline
             vlyr.loadNamedStyle(filep + '/style_black_outline.qml')
