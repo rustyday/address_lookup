@@ -258,12 +258,13 @@ class MakeFieldMaps:
                 point.setY(entry[1])
                 list_polygon.append(point)
             geomP = QgsGeometry.fromQPolygonF(list_polygon)
+            # transform to GDA94 - note different to transforming a point
             geomP.transform(transform)
             poly.setGeometry(geomP)
-            # transform to GDA94
-            # poly.transform(transform)
             dprov.addFeatures([poly])
             vlyr.updateExtents()
+            # style as outline
+            vlyr.loadNamedStyle(filep + '/style_black_outline.qml')
             QgsProject.instance().addMapLayers([vlyr])
 
             # transform point for panning
@@ -279,8 +280,6 @@ class MakeFieldMaps:
         manager = projectInstance.layoutManager()
         # make a new print layout object
         layout = QgsPrintLayout(projectInstance)
-        # needs to call this according to API documentaiton
-        # layout.initializeDefaults()  - no, because loading from template
         # load from template
 
         global filep
@@ -308,25 +307,9 @@ class MakeFieldMaps:
             manager.removeLayout(item)
         # add new layout to manager
         manager.addLayout(layout)
-        # create a map item to add
-        # itemMap = QgsLayoutItemMap.create(layout)
-        # add some settings
-
-        # using ndawson's answer below, do this before setting extent
-        # itemMap.attemptResize(QgsLayoutSize(6, 4, QgsUnitTypes.LayoutInches))
-        # set an extent
-        # itemMap.setExtent(self.iface.mapCanvas().extent())
-        # add the map to the layout
-        # layout.addLayoutItem(itemMap)
 
     def run(self):
         """Run method that performs all the real work"""
-
-        # layers = [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
-        # layer_list = []
-        # for layer in layers:
-        #     layer_list.append(layer.name())
-        #     self.dlg.comboBox.addItems(layer_list)
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
